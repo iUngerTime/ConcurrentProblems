@@ -1,5 +1,4 @@
 # ConcurrentProblems
-Desc
 A code base of concurrent problems. Each branch is a different problem. The objective of each branch is to solve the given problem with linear scaling.
 
 # Branch: Mandlebrot
