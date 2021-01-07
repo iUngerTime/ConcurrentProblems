@@ -2,7 +2,7 @@
 A code base of concurrent problems. Each branch is a different problem. The objective of each branch is to solve the given problem with linear scaling.
 
 # Branch: Mandlebrot
-The Mandlebrot plots (X)^2 + C between the values -2,2 on the X plane and -2,2 on the Y plane. This solution creates a bmp image file, evaluating every pixel
+The Mandlebrot plots X^2 + C between the values -2,2 on the X plane and -2,2 on the Y plane. This solution creates a bmp image file, evaluating every pixel
 and if it belongs in the set, it is made a black pixel; otherwise it is colored with given colorizer functions.
 
 CMD Args:
