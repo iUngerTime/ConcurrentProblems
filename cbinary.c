@@ -386,7 +386,18 @@ static element_t local_tree_lookup(tree_t t, int value)
 
     i_element_t *curr;
 
-    if (tree->root == NULL) return NULL;
+    if (tree->root == NULL) 
+    {
+        //Unlock the tree
+        if(tree->lock_type == COARSE_LOCK)
+            pthread_mutex_unlock(&tree->m_lock);
+
+        //unlock the tree (rw)
+        if(tree->lock_type == RW_LOCK)
+            pthread_rwlock_unlock(&tree->rw_lock);
+        
+        return NULL;
+    }
 
     curr = tree->root;
     while (curr != NULL && curr->value != value)
