@@ -1,8 +1,22 @@
-# -O0 is good for debugging, but might want to try -O3 for performance reasons
-CPPFLAGS = -g -O3 -Wall -std=c++11 -pthread
+#*************************************
+# Makefile for concurrent binary tree
+# 
+# Author: Brenton Unger
+# Date: Jan 18, 2020
+#
+CPPFLAGS = -g -o3 -Wall -std=c++11 -pthread
 
-all: mandelbrot
+OBJS = cbinary.o \
+       usec.o
+
+all: main
 
 clean:
-	rm -f mandelbrot
-	rm -f *.bmp
+	rm -f main
+	rm -f *.o
+
+.c.o:
+	g++ $(CPPFLAGS) -c $? -o $@
+
+main: main.cpp $(OBJS)
+	g++ $(CPPFLAGS) main.cpp -o main $(OBJS)
