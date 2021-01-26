@@ -242,7 +242,7 @@ static void local_tree_insert(tree_t t, int value)
 
     //lock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_lock(&tree->m_lock);
+        lock(&tree->m_lock);
 
     //lock the tree (rw)
     if(tree->lock_type == RW_LOCK)
@@ -266,7 +266,7 @@ static void local_tree_insert(tree_t t, int value)
 
     //Unlock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_unlock(&tree->m_lock);
+        unlock(&tree->m_lock);
 
     //unlock the tree (rw)
     if(tree->lock_type == RW_LOCK)
@@ -279,7 +279,7 @@ static void local_tree_delete(tree_t t, int value)
 
     //lock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_lock(&tree->m_lock);
+        lock(&tree->m_lock);
 
     //lock the tree (rw)
     if(tree->lock_type == RW_LOCK)
@@ -365,7 +365,7 @@ static void local_tree_delete(tree_t t, int value)
 
     //Unlock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_unlock(&tree->m_lock);
+        unlock(&tree->m_lock);
 
     //unlock the tree (rw)
     if(tree->lock_type == RW_LOCK)
@@ -378,7 +378,7 @@ static element_t local_tree_lookup(tree_t t, int value)
 
     //lock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_lock(&tree->m_lock);
+        lock(&tree->m_lock);
 
     //lock the tree (rw)
     if(tree->lock_type == RW_LOCK)
@@ -390,12 +390,12 @@ static element_t local_tree_lookup(tree_t t, int value)
     {
         //Unlock the tree
         if(tree->lock_type == COARSE_LOCK)
-            pthread_mutex_unlock(&tree->m_lock);
+            unlock(&tree->m_lock);
 
         //unlock the tree (rw)
         if(tree->lock_type == RW_LOCK)
             pthread_rwlock_unlock(&tree->rw_lock);
-        
+
         return NULL;
     }
 
@@ -414,7 +414,7 @@ static element_t local_tree_lookup(tree_t t, int value)
 
     //Unlock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_unlock(&tree->m_lock);
+        unlock(&tree->m_lock);
 
     //unlock the tree (rw)
     if(tree->lock_type == RW_LOCK)
@@ -427,10 +427,12 @@ static void local_tree_traverse(tree_t t, void (*func)(element_t element))
 {
     i_tree_t *tree = (i_tree_t*)t;
 
+    //printf("Inside Traverse\n");
+
     //lock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_lock(&tree->m_lock);
-    
+        lock(&tree->m_lock);
+
     //lock the tree (rw)
     if(tree->lock_type == RW_LOCK)
         pthread_rwlock_rdlock(&tree->rw_lock);
@@ -439,7 +441,7 @@ static void local_tree_traverse(tree_t t, void (*func)(element_t element))
 
     //Unlock the tree
     if(tree->lock_type == COARSE_LOCK)
-        pthread_mutex_unlock(&tree->m_lock);
+        unlock(&tree->m_lock);
 
     //unlock the tree (rw)
     if(tree->lock_type == RW_LOCK)
@@ -500,6 +502,7 @@ static void Node_Insert_f(i_element_t *node, i_element_t *element)
         prev->right = element;
 
     unlock(&prev->lock);
+    unlock(&element->lock);
 }
 
 // Traverse the tree calling the specified function on each node
@@ -557,6 +560,7 @@ static void local_tree_insert_fine(tree_t t, int value)
     }
     else
     {
+        lock(&element->lock);
         Node_Insert_f(tree->root, element);
     }
     //unlock the tree
@@ -584,14 +588,28 @@ static void local_tree_delete_fine(tree_t t, int value)
             if (curr->value > value)
             {
                 if(curr->left != NULL)
+                {
                     lock(&curr->left->lock);
-                curr = curr->left;
+                    curr = curr->left;
+                }
+                else
+                {
+                    unlock(&curr->lock);
+                    curr = NULL;
+                }
             }
             else
             {
                 if(curr->right != NULL)
+                {
                     lock(&curr->right->lock);
-                curr = curr->right;
+                    curr = curr->right;
+                }
+                else
+                {
+                    unlock(&curr->lock);
+                    curr = NULL;
+                }
             }
         }
 
@@ -601,6 +619,7 @@ static void local_tree_delete_fine(tree_t t, int value)
             // We have to special case because curr->parent doesn't exist
             if (curr == tree->root)
             {
+                //printf("deleteing root\n");
                 if (curr->left != NULL)
                 {
                     if(curr->right != NULL)
@@ -615,14 +634,20 @@ static void local_tree_delete_fine(tree_t t, int value)
                     {
                         Node_Insert_f(tree->root, right_branch);
                     }
+                    else
+                        unlock(&tree->root->lock);
                 }
                 else
                 {
                     if(curr->right != NULL)
+                    {
                         lock(&curr->right->lock);
-                    tree->root = curr->right;
-                    tree->root->parent = NULL;
-                    unlock(&tree->root->lock);
+                        tree->root = curr->right;
+                        tree->root->parent = NULL;
+                        unlock(&tree->root->lock);
+                    }
+                    else
+                        tree->root = NULL;
                 }
 
                 unlock(&curr->lock);
@@ -631,6 +656,7 @@ static void local_tree_delete_fine(tree_t t, int value)
             }
             else
             {
+                //printf("not root\n");
                 // Process: cut out the right branch
                 // shift the left branch up to the parent
                 // reinsert the right branch
@@ -643,6 +669,7 @@ static void local_tree_delete_fine(tree_t t, int value)
                     lock(&curr->left->lock);
                 if (curr->parent->left == curr)
                 {
+                    //printf("I am left branch\n");
                     curr->parent->left = curr->left;
                     if (curr->left != NULL)
                     {
@@ -651,11 +678,15 @@ static void local_tree_delete_fine(tree_t t, int value)
                     }
                     if (right_branch != NULL) 
                     {
+                        //printf("insert right branch\n");
                         Node_Insert_f(curr->parent, right_branch);
                     }
+                    else
+                        unlock(&curr->parent->lock);
                 }
                 else
                 {
+                    //printf("I am right branch\n");
                     // must be right child
                     curr->parent->right = curr->left;
 
@@ -666,8 +697,11 @@ static void local_tree_delete_fine(tree_t t, int value)
                     }
                     if (right_branch != NULL) 
                     {
+                        //printf("insert right branch\n");
                         Node_Insert_f(curr->parent, right_branch);
                     }
+                    else
+                        unlock(&curr->parent->lock);
                 }
 
                 unlock(&curr->lock);
@@ -675,6 +709,8 @@ static void local_tree_delete_fine(tree_t t, int value)
                 free(curr);
             }
         }
+        //else
+            //printf("node to delete not found\n");
     }
     //unlock the tree
     //pthread_mutex_unlock(&tree->m_lock);
@@ -744,10 +780,13 @@ static void local_tree_traverse_fine(tree_t t, void (*func)(element_t element))
     //pthread_mutex_lock(&tree->m_lock);
 
     //lock the tree
-    pthread_mutex_lock(&tree->root->lock);
+    if(tree->root != NULL)
+    {
+        pthread_mutex_lock(&tree->root->lock);
 
-    //lock(&tree->root->lock);
-    Node_Traverse_f(tree->root, func);
+        //lock(&tree->root->lock);
+        Node_Traverse_f(tree->root, func);
+    }
 
     //unlock the tree
     //pthread_mutex_unlock(&tree->m_lock);
