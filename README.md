@@ -34,3 +34,18 @@ MAIN Args:
 -d <dur> duration of test in microseconds
 -B <delay> delay between operations in microseconds
 -L <delay> delay for holding lock on lookups
+  
+# Branch: MPI Mandelbrot
+This code accomplishes the same settings as the mandelbrot branch but using distributed computing options. MPI is an open source technology. Format to run is: mpirun -n <num_proccesors> mpibrot <cmd_args>
+
+The command line args for mpibrot is the same as the Mandelbrot branch, however, it does not have the UltraFractal (-b) code options.
+
+# Branch: MPI Sorts
+This branch focuses on using the MPI technology previously mentioned to do sorting. The format to run this program is: mpirun -n <num_proccesors> mpisort. The command line arguments for the mpisort program is listed below.
+
+MAIN Args:
+-h print this help message and exit
+-s <size of dataset>
+-p <print level>
+-S <seed value>
+-r algorithim (0 for hyperquicksort and 1 for merge)
